@@ -15,10 +15,29 @@
       {
         "command": "codeforces.refresh",
         "title": "Codeforces: Refresh",
-        "icon": {
-          "light": "resources/light/refresh.svg",
-          "dark": "resources/dark/refresh.svg"
-        }
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "codeforces.enterHandle",
+        "title": "Codeforces: Enter User Handle",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "codeforces.sortRatingAsc",
+        "title": "Sort by Rating (Ascending)"
+      },
+      {
+        "command": "codeforces.sortRatingDesc",
+        "title": "Sort by Rating (Descending)"
+      },
+      {
+        "command": "codeforces.sortNone",
+        "title": "No Sorting"
+      },
+      {
+        "command": "codeforces.showSortOptions",
+        "title": "Show Sorting Options",
+        "icon": "$(list-selection)"
       }
     ],
     "viewsContainers": {
@@ -50,10 +69,16 @@
       "view/title": [
         {
           "command": "codeforces.refresh",
+          "when": "view == codeforces-problems-all || view == codeforces-problems-difficulty || view == codeforces-problems-tags",
+          "group": "navigation@0"
+        },
+        {
+          "command": "codeforces.showSortOptions",
           "when": "view == codeforces-problems-all",
-          "group": "navigation"
+          "group": "sorting@1"
         }
-      ]
+      ],
+      "view/item/context": []
     }
   },
   "scripts": {

@@ -4,34 +4,63 @@ import { AllProblemsProvider } from './treeViews/allProblemsProvider';
 import { DifficultyProblemsProvider } from './treeViews/difficultyProblemsProvider';
 import { TagsProblemsProvider } from './treeViews/tagsProblemsProvider';
 import { CodeforcesProblem } from './models';
+import { UserSubmissions } from './userSubmissions';
 
 
-// This method is called when the extension is activated
+enum SortOrder {
+  None,
+  RatingAsc,
+  RatingDesc,
+}
+
 export function activate(context: vscode.ExtensionContext) {
 
-  // Instantiate the Codeforces API
   const api = new CodeforcesApi();
 
-  // Register the All Problems tree data provider
   const allProblemsProvider = new AllProblemsProvider(api);
   vscode.window.registerTreeDataProvider('codeforces-problems-all', allProblemsProvider);
 
-  // Register the Difficulty Problems tree data provider
   const difficultyProblemsProvider = new DifficultyProblemsProvider(api);
   vscode.window.registerTreeDataProvider('codeforces-problems-difficulty', difficultyProblemsProvider);
 
-  // Register the Tags Problems tree data provider
   const tagsProblemsProvider = new TagsProblemsProvider(api);
   vscode.window.registerTreeDataProvider('codeforces-problems-tags', tagsProblemsProvider);
 
-  // Register the command for showing the problem description
+  context.subscriptions.push(vscode.commands.registerCommand('codeforces.sortRatingAsc', async () => {
+    await allProblemsProvider.sortProblems(SortOrder.RatingAsc);
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('codeforces.sortRatingDesc', async () => {
+    await allProblemsProvider.sortProblems(SortOrder.RatingDesc);
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('codeforces.sortNone', async () => {
+    await allProblemsProvider.sortProblems(SortOrder.None);
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('codeforces.showSortOptions', async () => {
+    const sortOptions = [
+      { label: 'No Sorting', value: SortOrder.None },
+      { label: 'Sort by Rating (Ascending)', value: SortOrder.RatingAsc },
+      { label: 'Sort by Rating (Descending)', value: SortOrder.RatingDesc }
+    ];
+
+    const selectedOption = await vscode.window.showQuickPick(sortOptions, {
+      title: 'Sort Problems',
+      placeHolder: 'Choose a sorting option'
+    });
+
+    if (selectedOption) {
+      await allProblemsProvider.sortProblems(selectedOption.value);
+    }
+  }));
+
   context.subscriptions.push(
     vscode.commands.registerCommand('extension.showProblemDescription', async (problem: CodeforcesProblem) => {
       await allProblemsProvider.showProblemDescription(problem);
     }),
   );
 
-  // Register the command for refreshing the tree views
   context.subscriptions.push(
     vscode.commands.registerCommand('codeforces.refresh', () => {
       allProblemsProvider.refresh();
@@ -39,8 +68,40 @@ export function activate(context: vscode.ExtensionContext) {
       tagsProblemsProvider.refresh();
     }),
   );
-  
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('codeforces.setUserHandle', async () => {
+      const userHandle = await vscode.window.showInputBox({
+        prompt: 'Enter your Codeforces handle',
+      });
+      if (userHandle) {
+        try {
+          const submissions = await api.fetchUserSubmissions(userHandle);
+          UserSubmissions.set(userHandle, submissions);
+          allProblemsProvider.refresh();
+        } catch (error) {
+          vscode.window.showErrorMessage('Error fetching user submissions. Please check your handle and try again.');
+        }
+      }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('codeforces.enterHandle', async () => {
+      const handle = await vscode.window.showInputBox({
+        prompt: 'Enter your Codeforces handle',
+      });
+
+      if (handle) {
+        context.globalState.update('codeforcesHandle', handle);
+        vscode.window.showInformationMessage(`Codeforces handle set to: ${handle}`);
+        allProblemsProvider.handleChanged(handle);
+        difficultyProblemsProvider.handleChanged(handle);
+        tagsProblemsProvider.handleChanged(handle);
+      }
+    }),
+  );
+
 }
 
-// This method is called when the extension is deactivated
-export function deactivate() {}
+export function deactivate() { }

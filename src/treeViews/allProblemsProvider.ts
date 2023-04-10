@@ -2,62 +2,118 @@ import * as vscode from 'vscode';
 import { CodeforcesApi } from '../codeforcesApi';
 import { CodeforcesProblem } from '../models';
 import { ProblemTreeItem } from '../problemTreeItem';
+import { UserSubmissions } from '../userSubmissions';
 
+type ProblemOrCategory = CodeforcesProblem | 'Passed' | 'Failed' | 'Never Submitted';
 
-// Provides the tree data for the "All Problems" view in the extension
-export class AllProblemsProvider implements vscode.TreeDataProvider<CodeforcesProblem> {
-  
+enum SortOrder {
+  None,
+  RatingAsc,
+  RatingDesc,
+}
+
+export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCategory> {
+
   private api: CodeforcesApi;
   private currentPanel?: vscode.WebviewPanel;
   private _onDidChangeTreeData: vscode.EventEmitter<CodeforcesProblem | undefined | null | void> = new vscode.EventEmitter<CodeforcesProblem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<CodeforcesProblem | undefined | null | void> = this._onDidChangeTreeData.event;
 
+  private sortOrder: SortOrder = SortOrder.None;
+
+  private handle: string | undefined;
+
+  async sortProblems(order: SortOrder) {
+    this.sortOrder = order;
+    this.refresh();
+  }
+
   constructor(api: CodeforcesApi) {
     this.api = api;
   }
 
-  // Refresh the tree view by firing the onDidChangeTreeData event
+  private _passedProblems: CodeforcesProblem[] = [];
+  private _failedProblems: CodeforcesProblem[] = [];
+  private _neverSubmittedProblems: CodeforcesProblem[] = [];
+
+
   refresh(): void {
     this._onDidChangeTreeData.fire();
   }
 
-  // Get the tree item for the given problem
-  getTreeItem(element: CodeforcesProblem): ProblemTreeItem {
-    const treeItem = new ProblemTreeItem(element);
+  getTreeItem(element: ProblemOrCategory): vscode.TreeItem {
+    if (element === 'Passed' || element === 'Failed' || element === 'Never Submitted') {
+      return new vscode.TreeItem(element, vscode.TreeItemCollapsibleState.Expanded);
+    }
+    const problem = element as CodeforcesProblem;
+    const latestVerdict = UserSubmissions.getLatestVerdict(problem.contestId, problem.index);
+    const treeItem = new ProblemTreeItem(problem, latestVerdict);
     treeItem.tooltip = treeItem.ratingTooltip;
     treeItem.command = {
       command: 'extension.showProblemDescription',
       title: 'Show Problem Description',
-      arguments: [element],
+      arguments: [problem],
     };
-    return treeItem;
-  }  
 
-  // Get the children for the given element (if any)
-  async getChildren(element?: CodeforcesProblem): Promise<CodeforcesProblem[]> {
+    if (latestVerdict === 'OK') {
+      treeItem.iconPath = new vscode.ThemeIcon('check');
+    } else if (latestVerdict === 'PARTIAL') {
+      treeItem.iconPath = new vscode.ThemeIcon('extensions-info-message');
+    } else if (latestVerdict !== null && UserSubmissions.isNegativeVerdict(latestVerdict)) {
+      treeItem.iconPath = new vscode.ThemeIcon('error');
+    }
+
+    return treeItem;
+  }
+
+  async getChildren(element?: ProblemOrCategory): Promise<ProblemOrCategory[] | null | undefined> {
     if (!element) {
       try {
         const problems = await this.api.getAllProblems();
-        return problems;
+        if (this.sortOrder === SortOrder.RatingAsc) {
+          problems.sort((a, b) => {
+            if (a.rating === undefined && b.rating === undefined) return 0;
+            if (a.rating === undefined) return 1;
+            if (b.rating === undefined) return -1;
+            return a.rating - b.rating;
+          });
+        } else if (this.sortOrder === SortOrder.RatingDesc) {
+          problems.sort((a, b) => {
+            if (a.rating === undefined && b.rating === undefined) return 0;
+            if (a.rating === undefined) return 1;
+            if (b.rating === undefined) return -1;
+            return b.rating - a.rating;
+          });
+        }
+        this._passedProblems = problems.filter(problem => UserSubmissions.getLatestVerdict(problem.contestId, problem.index) === 'OK');
+        this._failedProblems = problems.filter(problem => {
+          const latestVerdict = UserSubmissions.getLatestVerdict(problem.contestId, problem.index);
+          return latestVerdict !== 'OK' && latestVerdict !== null;
+        });
+        this._neverSubmittedProblems = problems.filter(problem => UserSubmissions.getLatestVerdict(problem.contestId, problem.index) === null);
+        return ['Passed', 'Failed', 'Never Submitted'];
       } catch (error) {
         if (error instanceof Error) {
           vscode.window.showErrorMessage(`Error fetching problems: ${error.message}`);
         } else {
           vscode.window.showErrorMessage('Error fetching problems');
         }
-        return [];
+        return undefined;
       }
+    } else if (element === 'Passed') {
+      return this._passedProblems;
+    } else if (element === 'Failed') {
+      return this._failedProblems;
+    } else if (element === 'Never Submitted') {
+      return this._neverSubmittedProblems;
     }
-    return [];
+    return undefined;
   }
 
-  // Show the problem description in a WebViewPanel
   async showProblemDescription(problem: CodeforcesProblem) {
-    
-    // Generate the problem URL
+
     const problemUrl = `https://codeforces.com/contest/${problem.contestId}/problem/${problem.index}`;
-  
-    // Fetch the problem description using progress notification
+
     const problemDescriptionHtml = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
@@ -69,14 +125,10 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<CodeforcesPr
       }
     );
 
-    
-  
-    // Dispose of the previous panel if it exists
     if (this.currentPanel) {
       this.currentPanel.dispose();
     }
-  
-    // Create a new panel and store a reference to it
+
     this.currentPanel = vscode.window.createWebviewPanel(
       'problemDescription',
       problem.name,
@@ -86,8 +138,7 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<CodeforcesPr
         retainContextWhenHidden: true,
       }
     );
-  
-    // Set the panel's content
+
     this.currentPanel.webview.html = `
 
       <style>
@@ -170,11 +221,17 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<CodeforcesPr
       <h2>Rating: ${problem.rating}</h2>
       ${problemDescriptionHtml}
     `;
-  
-    // Dispose of the reference when the panel is closed
+
     this.currentPanel.onDidDispose(() => {
       this.currentPanel = undefined;
     });
-  }  
-  
+  }
+
+  async handleChanged(handle: string) {
+    this.handle = handle;
+    const submissions = await UserSubmissions.fetchSubmissions(handle);
+    UserSubmissions.setSubmissions(submissions);
+    this.refresh();
+  }
+
 }
