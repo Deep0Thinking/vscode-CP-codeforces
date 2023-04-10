@@ -10,5 +10,4 @@ export class ProblemTreeItem extends vscode.TreeItem {
     return `${this.label}\nRating: ${this.problem.rating}`;
   }
 
-  iconPath = new vscode.ThemeIcon('symbol-variable');
 }
