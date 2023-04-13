@@ -3,6 +3,8 @@ import { CodeforcesApi } from '../codeforcesApi';
 import { CodeforcesProblem } from '../models';
 import { ProblemTreeItem } from '../problemTreeItem';
 import { UserSubmissions } from '../userSubmissions';
+import { CodeGenerator } from '../codeGenerator';
+
 
 type ProblemOrCategory = CodeforcesProblem | 'Passed' | 'Failed' | 'Never Submitted';
 
@@ -35,7 +37,6 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
   private _passedProblems: CodeforcesProblem[] = [];
   private _failedProblems: CodeforcesProblem[] = [];
   private _neverSubmittedProblems: CodeforcesProblem[] = [];
-
 
   refresh(): void {
     this._onDidChangeTreeData.fire();
@@ -204,6 +205,22 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
           display: block;
         }
 
+        .code-button {
+          position: fixed;
+          bottom: 15px;
+          right: 15px;
+          background-color: #007acc;
+          color: white;
+          padding: 8px 16px;
+          font-size: 16px;
+          border: none;
+          cursor: pointer;
+        }
+
+        .code-button:hover {
+          background-color: #005999;
+        }
+
       </style>
 
       <script>
@@ -213,18 +230,51 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
             displayMath: [['$$', '$$'], ['\\[', '\\]']],
           }
         };
+
+        const vscode = acquireVsCodeApi();
+        function createCodeFile() {
+          vscode.postMessage({ command: 'createCodeFile' });
+        }
+
       </script>
       <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
-      
-      <h1><a href="${problemUrl}" target="_blank">${problem.name}</a></h1>
-      <h2>Rating: ${problem.rating}</h2>
-      ${problemDescriptionHtml}
+      <body>
+        <h1><a href="${problemUrl}" target="_blank">${problem.name}</a></h1>
+        <h2>Rating: ${problem.rating}</h2>
+        <hr>
+        ${problemDescriptionHtml}
+        <hr>
+        <br><br><br><br>
+        <button class="code-button" onclick="createCodeFile()">Code</button>
+      </body>
     `;
 
     this.currentPanel.onDidDispose(() => {
       this.currentPanel = undefined;
     });
+
+    this.currentPanel.webview.onDidReceiveMessage(async message => {
+      if (message.command === 'createCodeFile') {
+        const languages = [
+          { label: 'Python3', value: 'python3', extension: '.py' },
+          { label: 'C++', value: 'cpp', extension: '.cpp' },
+          { label: 'Haskell', value: 'haskell', extension: '.hs' },
+          { label: 'Java', value: 'java', extension: '.java' },
+          // other languages 
+        ];
+    
+        const selectedLanguage = await vscode.window.showQuickPick(languages, {
+          title: 'Select a programming language',
+          placeHolder: 'Choose a language',
+        });
+    
+        if (selectedLanguage) {
+          vscode.commands.executeCommand('extension.createCodeFile', problem, selectedLanguage);
+        }
+      }
+    });    
+
   }
 
   async handleChanged(handle: string) {
@@ -234,4 +284,23 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
     this.refresh();
   }
 
+  async showLanguageOptions(contestId: number, index: string) {
+    const languages = [
+      { label: 'Python3', value: { language: 'python3', extension: 'py' } },
+      { label: 'C++', value: { language: 'cpp', extension: 'cpp' } },
+      { label: 'Haskell', value: { language: 'haskell', extension: 'hs' } },
+      { label: 'Java', value: { language: 'java', extension: 'java' } },
+      // other languages 
+    ];
+  
+    const selectedLanguage = await vscode.window.showQuickPick(languages, {
+      title: 'Select a language',
+      placeHolder: 'Choose a programming language',
+    });
+  
+    if (selectedLanguage) {
+      await CodeGenerator.createSolutionFile(contestId, index, selectedLanguage.value.language, selectedLanguage.value.extension);
+    }
+  }
+  
 }

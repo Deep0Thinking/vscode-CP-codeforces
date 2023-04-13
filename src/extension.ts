@@ -5,6 +5,9 @@ import { DifficultyProblemsProvider } from './treeViews/difficultyProblemsProvid
 import { TagsProblemsProvider } from './treeViews/tagsProblemsProvider';
 import { CodeforcesProblem } from './models';
 import { UserSubmissions } from './userSubmissions';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 
 enum SortOrder {
@@ -59,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('extension.showProblemDescription', async (problem: CodeforcesProblem) => {
       await allProblemsProvider.showProblemDescription(problem);
     }),
-  );
+  );  
 
   context.subscriptions.push(
     vscode.commands.registerCommand('codeforces.refresh', () => {
@@ -101,6 +104,35 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }),
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'extension.createCodeFile',
+      async (problem: CodeforcesProblem, selectedLanguage: any) => {
+        const solutionFolderName = 'vscode-codeforces-problems-solutions';
+        const solutionFileName = `${problem.contestId}-${problem.index}${selectedLanguage.extension}`;
+        const rootPath = vscode.workspace.workspaceFolders
+          ? vscode.workspace.workspaceFolders[0].uri.fsPath
+          : os.homedir();
+        const solutionFolderPath = path.join(rootPath, solutionFolderName);
+  
+        if (!fs.existsSync(solutionFolderPath)) {
+          fs.mkdirSync(solutionFolderPath);
+        }
+  
+        const solutionFilePath = path.join(solutionFolderPath, solutionFileName);
+  
+        if (!fs.existsSync(solutionFilePath)) {
+          fs.writeFileSync(solutionFilePath, '');
+        }
+  
+        const solutionFileUri = vscode.Uri.file(solutionFilePath);
+        const solutionDocument = await vscode.workspace.openTextDocument(solutionFileUri);
+        await vscode.window.showTextDocument(solutionDocument, { preview: false, viewColumn: vscode.ViewColumn.Two });
+
+      }
+    )
+  );  
 
 }
 
