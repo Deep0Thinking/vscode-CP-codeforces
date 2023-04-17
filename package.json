@@ -1,6 +1,6 @@
 {
   "name": "vscode-CP-codeforces",
-  "displayName": "Codeforces",
+  "displayName": "CP-codeforces",
   "description": "View and solve Codeforces problems within VS Code.",
   "version": "0.0.1",
   "license": "MIT",
