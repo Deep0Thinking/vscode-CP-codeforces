@@ -109,7 +109,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       'extension.createCodeFile',
       async (problem: CodeforcesProblem, selectedLanguage: any) => {
-        const solutionFolderName = 'vscode-codeforces-problems-solutions';
+        const solutionFolderName = 'vscode-CP-codeforces-problems-solutions';
         const solutionFileName = `${problem.contestId}-${problem.index}${selectedLanguage.extension}`;
         const rootPath = vscode.workspace.workspaceFolders
           ? vscode.workspace.workspaceFolders[0].uri.fsPath
