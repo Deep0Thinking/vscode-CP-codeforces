@@ -221,6 +221,22 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
           background-color: #005999;
         }
 
+        .submit-button {
+          position: fixed;
+          bottom: 15px;
+          left: 15px;
+          background-color: #4CAF50;
+          color: white;
+          padding: 8px 16px;
+          font-size: 16px;
+          border: none;
+          cursor: pointer;
+        }
+  
+        .submit-button:hover {
+          background-color: #45a049;
+        }
+
       </style>
 
       <script>
@@ -236,6 +252,10 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
           vscode.postMessage({ command: 'createCodeFile' });
         }
 
+        function submitSolution() {
+          vscode.postMessage({ command: 'submitSolution', problemContestId: '${problem.contestId}', problemIndex: '${problem.index}' });
+        }
+
       </script>
       <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
@@ -247,6 +267,7 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
         <hr>
         <br><br><br><br>
         <button class="code-button" onclick="createCodeFile()">Code</button>
+        <button class="submit-button" onclick="submitSolution()">Submit</button>
       </body>
     `;
 
@@ -273,6 +294,14 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
           vscode.commands.executeCommand('extension.createCodeFile', problem, selectedLanguage);
         }
       }
+
+      if (message.command === 'submitSolution') {
+        const problemIndex = message.problemIndex;
+        const problemContestId = message.problemContestId;
+        const problemCode = `${problemContestId}-${problemIndex}`;
+        vscode.env.openExternal(vscode.Uri.parse(`https://codeforces.com/problemset/submit?submittedProblemCode=${problemCode}`));
+      }
+
     });    
 
   }
