@@ -10,7 +10,7 @@ export class CodeGenerator {
         return;
       }
   
-      const solutionsFolder = path.join(rootFolder, 'vscode-codeforces-problems-solutions');
+      const solutionsFolder = path.join(rootFolder, 'vscode-CP-codeforces-problems-solutions');
       const solutionFilename = `${contestId}-${index}.${extension}`;
       const solutionPath = path.join(solutionsFolder, solutionFilename);
   
