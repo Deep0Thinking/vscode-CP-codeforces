@@ -1,15 +1,15 @@
 {
-  "name": "vscode-codeforces",
+  "name": "vscode-CP-codeforces",
   "displayName": "Codeforces",
   "description": "View and solve Codeforces problems within VS Code.",
   "version": "0.0.1",
   "license": "MIT",
   "author": "Deep0Thinking",
   "publisher": "Deep0Thinking",
-  "homepage": "https://github.com/Deep0Thinking/vscode-codeforces/blob/master/README.md",
+  "homepage": "https://github.com/Deep0Thinking/vscode-CP-codeforces/blob/master/README.md",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Deep0Thinking/vscode-codeforces"
+    "url": "https://github.com/Deep0Thinking/vscode-CP-codeforces"
   },
   "engines": {
     "vscode": "^1.77.0"
