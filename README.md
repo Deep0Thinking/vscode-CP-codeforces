@@ -4,7 +4,7 @@ A VSCode extension that enables users to view and solve Codeforces problems with
 
 ## Demonstration
 
-https://user-images.githubusercontent.com/103571424/232364929-1dad52e5-c081-45e7-af1f-fe1718501590.mov
+![](https://user-images.githubusercontent.com/103571424/232364929-1dad52e5-c081-45e7-af1f-fe1718501590.mov)
 
 ## Usage
 
