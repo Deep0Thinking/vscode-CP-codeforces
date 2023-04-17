@@ -3,6 +3,13 @@
   "displayName": "Codeforces",
   "description": "View and solve Codeforces problems within VS Code.",
   "version": "0.0.1",
+  "license": "MIT",
+  "author": "Deep0Thinking",
+  "homepage": "https://github.com/Deep0Thinking/vscode-codeforces/blob/master/README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Deep0Thinking/vscode-codeforces"
+  },
   "engines": {
     "vscode": "^1.77.0"
   },
