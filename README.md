@@ -4,7 +4,7 @@ A VSCode extension that enables users to view and solve Codeforces problems with
 
 # Demonstration
 
-![demonstration](https://user-images.githubusercontent.com/103571424/232364929-1dad52e5-c081-45e7-af1f-fe1718501590.mov)
+![demonstration](https://user-images.githubusercontent.com/103571424/232390418-239ee6ba-2666-41c6-9163-f5f72566d863.mov)
 
 # Features
 
@@ -28,7 +28,7 @@ Click on the `Refresh` button next to the `All` to refresh and refetching the pr
 
 ![Sorting options button](/resources/choose-a-sorting-option-demo.png)
 
-Click on the `More Actions` button next to the `All` to choose the sorting option.
+Click on the `More Actions` button next to the `All` to choose the sorting option for the problems.
 
 # Requirements
 
