@@ -7,10 +7,6 @@ export interface CodeforcesProblem {
 }
 
 export interface CodeforcesSubmission {
-  id: number;
-  contestId: number;
-  creationTimeSeconds: number;
   problem: CodeforcesProblem;
-  programmingLanguage: string;
   verdict: string;
 }

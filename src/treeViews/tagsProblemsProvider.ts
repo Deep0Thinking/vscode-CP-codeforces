@@ -1,20 +1,21 @@
-import * as vscode from 'vscode';
-import { CodeforcesApi } from '../codeforcesApi';
-import { CodeforcesProblem } from '../models';
-import { ProblemTreeItem } from '../problemTreeItem';
-import { UserSubmissions } from '../userSubmissions';
+import * as vscode from "vscode";
+import { CodeforcesApi } from "../codeforcesApi";
+import { CodeforcesProblem } from "../models";
+import { ProblemTreeItem } from "../problemTreeItem";
 
-export class TagsProblemsProvider implements vscode.TreeDataProvider<CodeforcesProblem | { label: string; tag: string }> {
+export class TagsProblemsProvider
+  implements
+    vscode.TreeDataProvider<CodeforcesProblem | { label: string; tag: string }>
+{
   private api: CodeforcesApi;
-  private _onDidChangeTreeData: vscode.EventEmitter<CodeforcesProblem | { label: string; tag: string } | undefined | null | void> = new vscode.EventEmitter<CodeforcesProblem | { label: string; tag: string } | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<CodeforcesProblem | { label: string; tag: string } | undefined | null | void> = this._onDidChangeTreeData.event;
-
-  private handle: string | undefined;
-
-  handleChanged(handle: string) {
-    this.handle = handle;
-    this.refresh();
-  }
+  private _onDidChangeTreeData: vscode.EventEmitter<
+    CodeforcesProblem | { label: string; tag: string } | undefined | null | void
+  > = new vscode.EventEmitter<
+    CodeforcesProblem | { label: string; tag: string } | undefined | null | void
+  >();
+  readonly onDidChangeTreeData: vscode.Event<
+    CodeforcesProblem | { label: string; tag: string } | undefined | null | void
+  > = this._onDidChangeTreeData.event;
 
   constructor(api: CodeforcesApi) {
     this.api = api;
@@ -24,41 +25,52 @@ export class TagsProblemsProvider implements vscode.TreeDataProvider<CodeforcesP
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: CodeforcesProblem | { label: string; tag: string }): vscode.TreeItem {
+  getTreeItem(
+    element: CodeforcesProblem | { label: string; tag: string }
+  ): vscode.TreeItem {
     if (this.isLabelTagElement(element)) {
-      const folder = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
-      folder.contextValue = 'tagFolder';
+      const folder = new vscode.TreeItem(
+        element.label,
+        vscode.TreeItemCollapsibleState.Collapsed
+      );
+      folder.contextValue = "tagFolder";
       return folder;
     } else {
-
-      const latestVerdict = UserSubmissions.getLatestVerdict(element.contestId, element.index);
+      const latestVerdict = this.api.getLatestVerdict(
+        element.contestId,
+        element.index
+      );
 
       const treeItem = new ProblemTreeItem(element, latestVerdict);
       treeItem.tooltip = treeItem.ratingTooltip;
       treeItem.command = {
-        command: 'extension.showProblemDescription',
-        title: 'Show Problem Description',
+        command: "extension.showProblemDescription",
+        title: "Show Problem Description",
         arguments: [element],
       };
 
-      if (latestVerdict === 'OK') {
-        treeItem.iconPath = new vscode.ThemeIcon('check');
-      } else if (latestVerdict === 'PARTIAL') {
-        treeItem.iconPath = new vscode.ThemeIcon('extensions-info-message');
-      } else if (latestVerdict !== null && UserSubmissions.isNegativeVerdict(latestVerdict)) {
-        treeItem.iconPath = new vscode.ThemeIcon('error');
+      if (latestVerdict === "OK") {
+        treeItem.iconPath = new vscode.ThemeIcon("check");
+      } else if (
+        latestVerdict !== null &&
+        this.api.isNegativeVerdict(latestVerdict)
+      ) {
+        treeItem.iconPath = new vscode.ThemeIcon("error");
       }
-
 
       return treeItem;
     }
   }
 
-  private isLabelTagElement(element: CodeforcesProblem | { label: string; tag: string }): element is { label: string; tag: string } {
-    return 'label' in element;
+  private isLabelTagElement(
+    element: CodeforcesProblem | { label: string; tag: string }
+  ): element is { label: string; tag: string } {
+    return "label" in element;
   }
 
-  async getChildren(element?: CodeforcesProblem | { label: string; tag: string }): Promise<CodeforcesProblem[] | { label: string; tag: string }[]> {
+  async getChildren(
+    element?: CodeforcesProblem | { label: string; tag: string }
+  ): Promise<CodeforcesProblem[] | { label: string; tag: string }[]> {
     if (!element) {
       try {
         const problems = await this.api.getAllProblems();
@@ -79,9 +91,11 @@ export class TagsProblemsProvider implements vscode.TreeDataProvider<CodeforcesP
         return tagFolders;
       } catch (error) {
         if (error instanceof Error) {
-          vscode.window.showErrorMessage(`Error fetching problems: ${error.message}`);
+          vscode.window.showErrorMessage(
+            `Error fetching problems: ${error.message}`
+          );
         } else {
-          vscode.window.showErrorMessage('Error fetching problems');
+          vscode.window.showErrorMessage("Error fetching problems");
         }
         return [];
       }
@@ -94,6 +108,6 @@ export class TagsProblemsProvider implements vscode.TreeDataProvider<CodeforcesP
 
   async getProblemsByTag(tag: string): Promise<CodeforcesProblem[]> {
     const problems = await this.api.getAllProblems();
-    return problems.filter(problem => problem.tags.includes(tag));
+    return problems.filter((problem) => problem.tags.includes(tag));
   }
 }
