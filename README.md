@@ -2,6 +2,10 @@
 
 A VSCode extension that enables users to view and solve Codeforces problems within VS Code.
 
+# Requirements
+
+- [VS Code 1.77.0+](https://code.visualstudio.com/updates/v1_77)
+
 # Demonstration
 
 ![demo](https://github.com/Deep0Thinking/vscode-CP-codeforces/assets/103571424/c366caaa-32ad-4c99-82a6-da7d88a48fb6)
@@ -35,10 +39,6 @@ A VSCode extension that enables users to view and solve Codeforces problems with
 ### Set template code to initialize the solution file
 
 <img width="474" alt="set-template-code-to-initialize-the-solution-file-demo" src="https://github.com/Deep0Thinking/vscode-CP-codeforces/assets/103571424/d6e2a336-cd05-4d30-ae74-14f97b41376e">
-
-# Requirements
-
-- [VS Code 1.77.0+](https://code.visualstudio.com/updates/v1_77)
 
 # Extension Settings
 
