@@ -3,7 +3,7 @@
   "displayName": "CP-codeforces",
   "description": "View and solve Codeforces problems within VS Code.",
   "icon": "/resources/codeforces-icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "author": "Deep0Thinking",
   "publisher": "Deep0Thinking",
@@ -28,8 +28,7 @@
       },
       {
         "command": "codeforces.enterHandle",
-        "title": "Codeforces: Enter User Handle",
-        "icon": "$(sign-in)"
+        "title": "Codeforces: Enter User Handle"
       },
       {
         "command": "codeforces.sortRatingAsc",
@@ -46,7 +45,12 @@
       {
         "command": "codeforces.showSortOptions",
         "title": "Show Sorting Options",
-        "icon": "$(list-selection)"
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "codeforces.toggleDifficultySortOrder",
+        "title": "Toggle Difficulty Sort Order",
+        "icon": "$(clippy)"
       }
     ],
     "viewsContainers": {
@@ -61,16 +65,29 @@
     "views": {
       "codeforces-viewer": [
         {
+          "id": "codeforces-problems",
+          "name": "Problems",
+          "when": "!codeforcesHandleSet"
+        },
+        {
+          "id": "codeforces-problems-recent",
+          "name": "Recent",
+          "when": "codeforcesHandleSet"
+        },
+        {
           "id": "codeforces-problems-all",
-          "name": "All"
+          "name": "All",
+          "when": "codeforcesHandleSet"
         },
         {
           "id": "codeforces-problems-difficulty",
-          "name": "Difficulty"
+          "name": "Difficulty",
+          "when": "codeforcesHandleSet"
         },
         {
           "id": "codeforces-problems-tags",
-          "name": "Tags"
+          "name": "Tags",
+          "when": "codeforcesHandleSet"
         }
       ]
     },
@@ -78,17 +95,111 @@
       "view/title": [
         {
           "command": "codeforces.refresh",
-          "when": "view == codeforces-problems-all || view == codeforces-problems-difficulty || view == codeforces-problems-tags",
+          "when": "view == codeforces-problems-all || view == codeforces-problems-difficulty || view == codeforces-problems-tags || view == codeforces-problems-recent",
           "group": "navigation@0"
         },
         {
           "command": "codeforces.showSortOptions",
           "when": "view == codeforces-problems-all",
-          "group": "sorting@1"
+          "group": "navigation@1"
+        },
+        {
+          "command": "codeforces.toggleDifficultySortOrder",
+          "when": "view == codeforces-problems-difficulty",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": []
-    }
+    },
+    "configuration": {
+      "title": "CP-codeforces",
+      "properties": {
+        "CPcodeforces.userHandle": {
+          "type": "string",
+          "default": "",
+          "description": "The last valid Codeforces user handle entered.",
+          "order": 1
+        },
+        "CPcodeforces.defaultSolutionsFolderPath": {
+          "type": "string",
+          "default": "",
+          "description": "The absolute path for saving solutions. (Leave blank to use the default home path.)",
+          "order": 2
+        },
+        "CPcodeforces.notifyPreferredLanguage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Notify if the preferred coding language is not set.",
+          "order": 3
+        },
+        "CPcodeforces.preferredCodingLanguage": {
+          "type": "string",
+          "default": "",
+          "description": "Preferred coding language for problem solutions.",
+          "enum": [
+            "",
+            "C",
+            "C#",
+            "C++",
+            "D",
+            "Go",
+            "Haskell",
+            "Java",
+            "JavaScript",
+            "Kotlin",
+            "OCaml",
+            "Pascal",
+            "Perl",
+            "PHP",
+            "Python3",
+            "Ruby",
+            "Rust",
+            "Scala"
+          ],
+          "order": 4
+        },
+        "CPcodeforces.notifySolutionTemplate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Notify if the solution template is not set.",
+          "order": 5
+        },
+        "CPcodeforces.solutionTemplate": {
+          "type": "string",
+          "default": "",
+          "description": "Template code for the solution file of the preferred language.",
+          "editPresentation": "multilineText",
+          "order": 6
+        },
+        "CPcodeforces.sortOrder": {
+          "type": "string",
+          "default": "None",
+          "description": "Sort order for the All problems list.",
+          "enum": [
+            "None",
+            "RatingAsc",
+            "RatingDesc"
+          ],
+          "order": 7
+        },
+        "CPcodeforces.difficultySortOrder": {
+          "type": "string",
+          "default": "RatingAsc",
+          "description": "Sort order for the Difficulty folders list.",
+          "enum": [
+            "RatingAsc",
+            "RatingDesc"
+          ],
+          "order": 8
+        }
+      }
+    },
+    "viewsWelcome": [
+      {
+        "view": "codeforces-problems",
+        "contents": "Please sign in with your Codeforces handle first. \n[Enter Codeforces handle](command:codeforces.enterHandle)"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -112,9 +223,9 @@
     "eslint": "^8.36.0",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
-    "ts-loader": "^9.4.2",
-    "typescript": "^4.9.5",
-    "webpack": "^5.76.3",
-    "webpack-cli": "^5.0.1"
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.2.2",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
   }
 }

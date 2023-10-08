@@ -1,12 +1,14 @@
-import * as vscode from 'vscode';
-import { CodeforcesApi } from '../codeforcesApi';
-import { CodeforcesProblem } from '../models';
-import { ProblemTreeItem } from '../problemTreeItem';
-import { UserSubmissions } from '../userSubmissions';
-import { CodeGenerator } from '../codeGenerator';
+import * as vscode from "vscode";
+import { CodeforcesApi } from "../codeforcesApi";
+import { CodeforcesProblem } from "../models";
+import { ProblemTreeItem } from "../problemTreeItem";
+import { RecentProblemsProvider } from "./recentProblemsProvider";
 
-
-type ProblemOrCategory = CodeforcesProblem | 'Passed' | 'Failed' | 'Never Submitted';
+type ProblemOrCategory =
+  | CodeforcesProblem
+  | "Passed"
+  | "Failed"
+  | "Never Submitted";
 
 enum SortOrder {
   None,
@@ -14,24 +16,45 @@ enum SortOrder {
   RatingDesc,
 }
 
-export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCategory> {
-
+export class AllProblemsProvider
+  implements vscode.TreeDataProvider<ProblemOrCategory>
+{
   private api: CodeforcesApi;
   private currentPanel?: vscode.WebviewPanel;
-  private _onDidChangeTreeData: vscode.EventEmitter<CodeforcesProblem | undefined | null | void> = new vscode.EventEmitter<CodeforcesProblem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<CodeforcesProblem | undefined | null | void> = this._onDidChangeTreeData.event;
+  private _onDidChangeTreeData: vscode.EventEmitter<
+    CodeforcesProblem | undefined | null | void
+  > = new vscode.EventEmitter<CodeforcesProblem | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<
+    CodeforcesProblem | undefined | null | void
+  > = this._onDidChangeTreeData.event;
 
   private sortOrder: SortOrder = SortOrder.None;
 
-  private handle: string | undefined;
+  private recentProblemsProvider: RecentProblemsProvider;
 
   async sortProblems(order: SortOrder) {
     this.sortOrder = order;
+    const config = vscode.workspace.getConfiguration("CPcodeforces");
+    switch (order) {
+      case SortOrder.RatingAsc:
+        config.update("sortOrder", "RatingAsc", true);
+        break;
+      case SortOrder.RatingDesc:
+        config.update("sortOrder", "RatingDesc", true);
+        break;
+      default:
+        config.update("sortOrder", "None", true);
+    }
     this.refresh();
   }
 
-  constructor(api: CodeforcesApi) {
+  constructor(
+    api: CodeforcesApi,
+    recentProblemsProvider: RecentProblemsProvider
+  ) {
     this.api = api;
+    this.recentProblemsProvider = recentProblemsProvider;
+    this.loadSortOrderFromSettings();
   }
 
   private _passedProblems: CodeforcesProblem[] = [];
@@ -43,31 +66,44 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
   }
 
   getTreeItem(element: ProblemOrCategory): vscode.TreeItem {
-    if (element === 'Passed' || element === 'Failed' || element === 'Never Submitted') {
-      return new vscode.TreeItem(element, vscode.TreeItemCollapsibleState.Expanded);
+    if (
+      element === "Passed" ||
+      element === "Failed" ||
+      element === "Never Submitted"
+    ) {
+      return new vscode.TreeItem(
+        element,
+        vscode.TreeItemCollapsibleState.Collapsed
+      );
     }
     const problem = element as CodeforcesProblem;
-    const latestVerdict = UserSubmissions.getLatestVerdict(problem.contestId, problem.index);
+    const latestVerdict = this.api.getLatestVerdict(
+      problem.contestId,
+      problem.index
+    );
     const treeItem = new ProblemTreeItem(problem, latestVerdict);
     treeItem.tooltip = treeItem.ratingTooltip;
     treeItem.command = {
-      command: 'extension.showProblemDescription',
-      title: 'Show Problem Description',
+      command: "extension.showProblemDescription",
+      title: "Show Problem Description",
       arguments: [problem],
     };
 
-    if (latestVerdict === 'OK') {
-      treeItem.iconPath = new vscode.ThemeIcon('check');
-    } else if (latestVerdict === 'PARTIAL') {
-      treeItem.iconPath = new vscode.ThemeIcon('extensions-info-message');
-    } else if (latestVerdict !== null && UserSubmissions.isNegativeVerdict(latestVerdict)) {
-      treeItem.iconPath = new vscode.ThemeIcon('error');
+    if (latestVerdict === "OK") {
+      treeItem.iconPath = new vscode.ThemeIcon("check");
+    } else if (
+      latestVerdict !== null &&
+      this.api.isNegativeVerdict(latestVerdict)
+    ) {
+      treeItem.iconPath = new vscode.ThemeIcon("error");
     }
 
     return treeItem;
   }
 
-  async getChildren(element?: ProblemOrCategory): Promise<ProblemOrCategory[] | null | undefined> {
+  async getChildren(
+    element?: ProblemOrCategory
+  ): Promise<ProblemOrCategory[] | null | undefined> {
     if (!element) {
       try {
         const problems = await this.api.getAllProblems();
@@ -86,39 +122,49 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
             return b.rating - a.rating;
           });
         }
-        this._passedProblems = problems.filter(problem => UserSubmissions.getLatestVerdict(problem.contestId, problem.index) === 'OK');
-        this._failedProblems = problems.filter(problem => {
-          const latestVerdict = UserSubmissions.getLatestVerdict(problem.contestId, problem.index);
-          return latestVerdict !== 'OK' && latestVerdict !== null;
+        this._passedProblems = problems.filter(
+          (problem) =>
+            this.api.getLatestVerdict(problem.contestId, problem.index) === "OK"
+        );
+        this._failedProblems = problems.filter((problem) => {
+          const latestVerdict = this.api.getLatestVerdict(
+            problem.contestId,
+            problem.index
+          );
+          return latestVerdict !== "OK" && latestVerdict !== null;
         });
-        this._neverSubmittedProblems = problems.filter(problem => UserSubmissions.getLatestVerdict(problem.contestId, problem.index) === null);
-        return ['Passed', 'Failed', 'Never Submitted'];
+        this._neverSubmittedProblems = problems.filter(
+          (problem) =>
+            this.api.getLatestVerdict(problem.contestId, problem.index) === null
+        );
+        return ["Passed", "Failed", "Never Submitted"];
       } catch (error) {
         if (error instanceof Error) {
-          vscode.window.showErrorMessage(`Error fetching problems: ${error.message}`);
+          vscode.window.showErrorMessage(
+            `Error fetching problems: ${error.message}`
+          );
         } else {
-          vscode.window.showErrorMessage('Error fetching problems');
+          vscode.window.showErrorMessage("Error fetching problems");
         }
         return undefined;
       }
-    } else if (element === 'Passed') {
+    } else if (element === "Passed") {
       return this._passedProblems;
-    } else if (element === 'Failed') {
+    } else if (element === "Failed") {
       return this._failedProblems;
-    } else if (element === 'Never Submitted') {
+    } else if (element === "Never Submitted") {
       return this._neverSubmittedProblems;
     }
     return undefined;
   }
 
   async showProblemDescription(problem: CodeforcesProblem) {
-
     const problemUrl = `https://codeforces.com/contest/${problem.contestId}/problem/${problem.index}`;
 
     const problemDescriptionHtml = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: 'Fetching the problem...',
+        title: "Fetching the problem...",
         cancellable: false,
       },
       async () => {
@@ -131,7 +177,7 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
     }
 
     this.currentPanel = vscode.window.createWebviewPanel(
-      'problemDescription',
+      "problemDescription",
       problem.name,
       vscode.ViewColumn.One,
       {
@@ -173,6 +219,13 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
 
         h1, h2 {
           text-align: center;
+        }
+
+        code {
+          background-color: rgb(224, 224, 224);
+          padding: 2px 5px;
+          border-radius: 3px;
+          color: black;
         }
 
         .title, .section-title {
@@ -253,7 +306,9 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
         }
 
         function submitSolution() {
-          vscode.postMessage({ command: 'submitSolution', problemContestId: '${problem.contestId}', problemIndex: '${problem.index}' });
+          vscode.postMessage({ command: 'submitSolution', problemContestId: '${
+            problem.contestId
+          }', problemIndex: '${problem.index}' });
         }
 
       </script>
@@ -262,6 +317,9 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
       <body>
         <h1><a href="${problemUrl}" target="_blank">${problem.name}</a></h1>
         <h2>Rating: ${problem.rating}</h2>
+        <h3>Tags: ${problem.tags
+          .map((tag) => `<code>${tag}</code>`)
+          .join(", ")}</h3>
         <hr>
         ${problemDescriptionHtml}
         <hr>
@@ -275,61 +333,135 @@ export class AllProblemsProvider implements vscode.TreeDataProvider<ProblemOrCat
       this.currentPanel = undefined;
     });
 
-    this.currentPanel.webview.onDidReceiveMessage(async message => {
-      if (message.command === 'createCodeFile') {
+    this.currentPanel.webview.onDidReceiveMessage(async (message) => {
+      if (message.command === "createCodeFile") {
         const languages = [
-          { label: 'Python3', value: 'python3', extension: '.py' },
-          { label: 'C++', value: 'cpp', extension: '.cpp' },
-          { label: 'Haskell', value: 'haskell', extension: '.hs' },
-          { label: 'Java', value: 'java', extension: '.java' },
-          // other languages 
+          { label: "C", value: "C", extension: ".c" },
+          { label: "C#", value: "C#", extension: ".cs" },
+          { label: "C++", value: "C++", extension: ".cpp" },
+          { label: "D", value: "D", extension: ".d" },
+          { label: "Go", value: "Go", extension: ".go" },
+          { label: "Haskell", value: "Haskell", extension: ".hs" },
+          { label: "Java", value: "Java", extension: ".java" },
+          { label: "JavaScript", value: "JavaScript", extension: ".js" },
+          { label: "Kotlin", value: "Kotlin", extension: ".kt" },
+          { label: "OCaml", value: "OCaml", extension: ".ml" },
+          { label: "Pascal", value: "Pascal", extension: ".pas" },
+          { label: "Perl", value: "Perl", extension: ".pl" },
+          { label: "PHP", value: "PHP", extension: ".php" },
+          { label: "Python3", value: "Python3", extension: ".py" },
+          { label: "Ruby", value: "Ruby", extension: ".rb" },
+          { label: "Rust", value: "Rust", extension: ".rs" },
+          { label: "Scala", value: "Scala", extension: ".scala" },
         ];
-    
+
+        const config = vscode.workspace.getConfiguration("CPcodeforces");
+        const preferredLanguage = config.get<string>("preferredCodingLanguage");
+        const notifyPreferredLanguage = config.get<boolean>(
+          "notifyPreferredLanguage"
+        );
+
+        this.recentProblemsProvider.addToRecent(problem);
+
+        if (preferredLanguage) {
+          const selectedLanguage = languages.find(
+            (lang) => lang.value === preferredLanguage
+          );
+          if (selectedLanguage) {
+            vscode.commands.executeCommand(
+              "extension.createCodeFile",
+              problem,
+              selectedLanguage
+            );
+            return;
+          }
+        }
+
         const selectedLanguage = await vscode.window.showQuickPick(languages, {
-          title: 'Select a programming language',
-          placeHolder: 'Choose a language',
+          title: "Select a programming language",
+          placeHolder: "Choose a language",
         });
-    
+
         if (selectedLanguage) {
-          vscode.commands.executeCommand('extension.createCodeFile', problem, selectedLanguage);
+          vscode.commands.executeCommand(
+            "extension.createCodeFile",
+            problem,
+            selectedLanguage
+          );
+
+          if (notifyPreferredLanguage) {
+            const selectedOption = await vscode.window.showInformationMessage(
+              "You haven't set your preferred coding language in the extension settings.",
+              "Set it now",
+              "Never remind me again"
+            );
+
+            if (selectedOption === "Set it now") {
+              vscode.commands.executeCommand(
+                "workbench.action.openSettings",
+                "CPcodeforces.preferredCodingLanguage"
+              );
+            } else if (selectedOption === "Never remind me again") {
+              config.update("notifyPreferredLanguage", false, true);
+            }
+
+            return;
+          }
         }
       }
 
-      if (message.command === 'submitSolution') {
+      if (message.command === "submitSolution") {
         const problemIndex = message.problemIndex;
         const problemContestId = message.problemContestId;
         const problemCode = `${problemContestId}-${problemIndex}`;
-        vscode.env.openExternal(vscode.Uri.parse(`https://codeforces.com/problemset/submit?submittedProblemCode=${problemCode}`));
+
+        this.recentProblemsProvider.addToRecent(problem);
+
+        vscode.env.openExternal(
+          vscode.Uri.parse(
+            `https://codeforces.com/problemset/submit?submittedProblemCode=${problemCode}`
+          )
+        );
       }
-
-    });    
-
-  }
-
-  async handleChanged(handle: string) {
-    this.handle = handle;
-    const submissions = await UserSubmissions.fetchSubmissions(handle);
-    UserSubmissions.setSubmissions(submissions);
-    this.refresh();
-  }
-
-  async showLanguageOptions(contestId: number, index: string) {
-    const languages = [
-      { label: 'Python3', value: { language: 'python3', extension: 'py' } },
-      { label: 'C++', value: { language: 'cpp', extension: 'cpp' } },
-      { label: 'Haskell', value: { language: 'haskell', extension: 'hs' } },
-      { label: 'Java', value: { language: 'java', extension: 'java' } },
-      // other languages 
-    ];
-  
-    const selectedLanguage = await vscode.window.showQuickPick(languages, {
-      title: 'Select a language',
-      placeHolder: 'Choose a programming language',
     });
-  
-    if (selectedLanguage) {
-      await CodeGenerator.createSolutionFile(contestId, index, selectedLanguage.value.language, selectedLanguage.value.extension);
+  }
+
+  async handleChanged(handle: string): Promise<boolean> {
+    try {
+      const submissions = await this.api.fetchUserSubmissions(handle);
+      this.api.setSubmissions(submissions);
+
+      vscode.commands.executeCommand("setContext", "codeforcesHandleSet", true);
+      this.refresh();
+      return true;
+    } catch (error) {
+      vscode.commands.executeCommand(
+        "setContext",
+        "codeforcesHandleSet",
+        false
+      );
+
+      if (error instanceof Error) {
+        vscode.window.showErrorMessage(error.message);
+      } else {
+        vscode.window.showErrorMessage("Error fetching user submissions.");
+      }
+      return false;
     }
   }
-  
+
+  loadSortOrderFromSettings(): void {
+    const config = vscode.workspace.getConfiguration("CPcodeforces");
+    const sortOrder = config.get<string>("sortOrder");
+    switch (sortOrder) {
+      case "RatingAsc":
+        this.sortOrder = SortOrder.RatingAsc;
+        break;
+      case "RatingDesc":
+        this.sortOrder = SortOrder.RatingDesc;
+        break;
+      default:
+        this.sortOrder = SortOrder.None;
+    }
+  }
 }
