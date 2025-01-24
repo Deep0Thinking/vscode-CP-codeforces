@@ -6,6 +6,12 @@ A VSCode extension that enables users to view and solve Codeforces problems with
 
 - [VS Code 1.77.0+](https://code.visualstudio.com/updates/v1_77)
 
+# ⚠️ Known Issue
+
+See [Issue #25](https://github.com/Deep0Thinking/vscode-CP-codeforces/issues/25) in this repo.
+
+> This error happens because **Codeforces recently added stricter bot protection (through Cloudflare possibly based on the feedback of `response.data`)**, and it can block or return 403 when automated tools (like this extension) try to fetch problem statements. Similar related issues have been discussed in [xalanq/cf-tool Issue #176](https://github.com/xalanq/cf-tool/issues/176) and [xalanq/cf-tool Issue #179](https://github.com/xalanq/cf-tool/issues/179). **Unfortunately, there is currently no direct fix or workaround**.
+
 # Demonstration
 
 ![demo](https://github.com/Deep0Thinking/vscode-CP-codeforces/assets/103571424/c366caaa-32ad-4c99-82a6-da7d88a48fb6)
